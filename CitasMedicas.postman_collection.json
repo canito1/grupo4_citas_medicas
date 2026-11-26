@@ -1,0 +1,784 @@
+{
+  "info": {
+    "_postman_id": "citas-medicas-api-v1",
+    "name": "Citas Médicas API - Validaciones y pruebas REST",
+    "description": "Colección de pruebas de integración para Pacientes, Médicos y Citas. Ejecutar los requests en orden con Collection Runner; los IDs se guardan automáticamente. Cambia la variable baseUrl si la API usa otro puerto.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "pacienteId",
+      "value": ""
+    },
+    {
+      "key": "medicoId",
+      "value": ""
+    },
+    {
+      "key": "citaId",
+      "value": ""
+    },
+    {
+      "key": "fechaCita",
+      "value": ""
+    },
+    {
+      "key": "dniPaciente",
+      "value": ""
+    },
+    {
+      "key": "emailPaciente",
+      "value": ""
+    },
+    {
+      "key": "colegiaturaMedico",
+      "value": ""
+    },
+    {
+      "key": "emailMedico",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Pacientes",
+      "item": [
+        {
+          "name": "Listar pacientes",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/pacientes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('El cuerpo es una lista', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener paciente existente",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/pacientes/1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y devuelve un paciente', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().id).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear paciente válido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"María\",\n  \"apellido\": \"Ramos\",\n  \"dni\": \"{{dniPaciente}}\",\n  \"telefono\": \"999888777\",\n  \"email\": \"{{emailPaciente}}\",\n  \"fechaNacimiento\": \"1995-03-10T00:00:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pacientes"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var suffix = String(Date.now()).slice(-8);",
+                  "pm.collectionVariables.set('dniPaciente', suffix);",
+                  "pm.collectionVariables.set('emailPaciente', 'maria.ramos.' + suffix + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201 Created', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Devuelve y guarda el ID del paciente', function () { var data = pm.response.json(); pm.expect(data.id).to.be.a('number'); pm.expect(data.dni).to.eql(pm.collectionVariables.get('dniPaciente')); pm.collectionVariables.set('pacienteId', data.id); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validar paciente con datos inválidos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"A\",\n  \"apellido\": \"\",\n  \"dni\": \"123\",\n  \"telefono\": \"teléfono inválido\",\n  \"email\": \"correo-inválido\",\n  \"fechaNacimiento\": \"1995-03-10T00:00:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pacientes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('La validación responde 400 Bad Request', function () { pm.response.to.have.status(400); });",
+                  "pm.test('La respuesta incluye errores de validación', function () { pm.expect(pm.response.json()).to.have.property('errors'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rechazar DNI duplicado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Paciente\",\n  \"apellido\": \"Duplicado\",\n  \"dni\": \"12345678\",\n  \"telefono\": \"900000000\",\n  \"email\": \"duplicado@example.com\",\n  \"fechaNacimiento\": \"1990-01-01T00:00:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pacientes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('El DNI duplicado responde 409 Conflict', function () { pm.response.to.have.status(409); });",
+                  "pm.test('El error tiene el formato estándar', function () { var data = pm.response.json(); pm.expect(data.status).to.eql(409); pm.expect(data).to.have.property('mensaje'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar paciente creado",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"María Elena\",\n  \"apellido\": \"Ramos\",\n  \"dni\": \"45678901\",\n  \"telefono\": \"999888777\",\n  \"email\": \"maria.ramos.postman@example.com\",\n  \"fechaNacimiento\": \"1995-03-10T00:00:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pacientes/{{pacienteId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y actualiza el paciente', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().nombre).to.eql('María Elena'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar paciente inexistente",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/pacientes/999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404 Not Found', function () { pm.response.to.have.status(404); });",
+                  "pm.test('El error identifica el recurso', function () { var data = pm.response.json(); pm.expect(data.status).to.eql(404); pm.expect(data.error).to.eql('NotFound'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Médicos",
+      "item": [
+        {
+          "name": "Listar médicos",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/medicos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y devuelve una lista', function () { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener médico existente",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/medicos/1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y devuelve el médico inicial', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().id).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear médico válido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Jorge\",\n  \"apellido\": \"Vega\",\n  \"especialidad\": \"Medicina General\",\n  \"numeroColegiatura\": \"{{colegiaturaMedico}}\",\n  \"email\": \"{{emailMedico}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/medicos"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var suffix = String(Date.now());",
+                  "pm.collectionVariables.set('colegiaturaMedico', 'CMP-' + suffix);",
+                  "pm.collectionVariables.set('emailMedico', 'jorge.vega.' + suffix + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201 Created', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Devuelve y guarda el ID del médico', function () { var data = pm.response.json(); pm.expect(data.id).to.be.a('number'); pm.expect(data.numeroColegiatura).to.eql(pm.collectionVariables.get('colegiaturaMedico')); pm.collectionVariables.set('medicoId', data.id); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validar médico con datos inválidos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"X\",\n  \"apellido\": \"\",\n  \"especialidad\": \"\",\n  \"numeroColegiatura\": \"123\",\n  \"email\": \"correo-inválido\"\n}"
+            },
+            "url": "{{baseUrl}}/api/medicos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('La validación responde 400 Bad Request', function () { pm.response.to.have.status(400); });",
+                  "pm.test('La respuesta incluye errores de validación', function () { pm.expect(pm.response.json()).to.have.property('errors'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rechazar colegiatura duplicada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Médico\",\n  \"apellido\": \"Duplicado\",\n  \"especialidad\": \"Cardiología\",\n  \"numeroColegiatura\": \"CMP-12345\",\n  \"email\": \"duplicado.medico@example.com\"\n}"
+            },
+            "url": "{{baseUrl}}/api/medicos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('La colegiatura duplicada responde 409 Conflict', function () { pm.response.to.have.status(409); });",
+                  "pm.test('El error tiene el formato estándar', function () { var data = pm.response.json(); pm.expect(data.status).to.eql(409); pm.expect(data).to.have.property('mensaje'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar médico creado",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Jorge Luis\",\n  \"apellido\": \"Vega\",\n  \"especialidad\": \"Medicina General\",\n  \"numeroColegiatura\": \"CMP-54321\",\n  \"email\": \"jorge.vega.postman@example.com\"\n}"
+            },
+            "url": "{{baseUrl}}/api/medicos/{{medicoId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y actualiza el médico', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().nombre).to.eql('Jorge Luis'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar médico inexistente",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/medicos/999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404 Not Found', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Citas",
+      "item": [
+        {
+          "name": "Listar citas",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/citas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y devuelve una lista', function () { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener cita inicial",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/citas/1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y devuelve la cita inicial', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().id).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear cita válida",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('fechaCita', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201 Created', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Devuelve y guarda la cita programada', function () { var data = pm.response.json(); pm.expect(data.id).to.be.a('number'); pm.expect(data.estado).to.eql('Programada'); pm.collectionVariables.set('citaId', data.id); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": {{pacienteId}},\n  \"medicoId\": {{medicoId}},\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"motivo\": \"Consulta de rutina\",\n  \"observaciones\": \"Creada desde la colección de Postman\"\n}"
+            },
+            "url": "{{baseUrl}}/api/citas"
+          }
+        },
+        {
+          "name": "Rechazar cita con fecha pasada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 1,\n  \"medicoId\": 1,\n  \"fechaHora\": \"2000-01-01T10:00:00Z\",\n  \"motivo\": \"Fecha inválida\"\n}"
+            },
+            "url": "{{baseUrl}}/api/citas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('La fecha pasada responde 400 Bad Request', function () { pm.response.to.have.status(400); });",
+                  "pm.test('El error tiene el formato estándar', function () { var data = pm.response.json(); pm.expect(data.status).to.eql(400); pm.expect(data).to.have.property('mensaje'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rechazar cita con paciente inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 999999,\n  \"medicoId\": 1,\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"motivo\": \"Paciente inexistente\"\n}"
+            },
+            "url": "{{baseUrl}}/api/citas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('El paciente inexistente responde 404 Not Found', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rechazar horario ocupado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 1,\n  \"medicoId\": {{medicoId}},\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"motivo\": \"Conflicto de horario\"\n}"
+            },
+            "url": "{{baseUrl}}/api/citas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('El horario ocupado responde 409 Conflict', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar citas por paciente",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/citas/paciente/{{pacienteId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y devuelve una lista', function () { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar citas por médico",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/citas/medico/{{medicoId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y devuelve una lista', function () { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar cita creada",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": {{pacienteId}},\n  \"medicoId\": {{medicoId}},\n  \"fechaHora\": \"{{fechaCita}}\",\n  \"motivo\": \"Consulta de seguimiento\",\n  \"observaciones\": \"Actualizada desde Postman\"\n}"
+            },
+            "url": "{{baseUrl}}/api/citas/{{citaId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y actualiza el motivo', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().motivo).to.eql('Consulta de seguimiento'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar estado a Confirmada",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "\"Confirmada\""
+            },
+            "url": "{{baseUrl}}/api/citas/{{citaId}}/estado"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 y cambia el estado', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().estado).to.eql('Confirmada'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar cita creada",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/citas/{{citaId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204 No Content', function () { pm.response.to.have.status(204); pm.expect(pm.response.text()).to.eql(''); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar cita eliminada",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/citas/{{citaId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('La cita eliminada responde 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar paciente creado",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/pacientes/{{pacienteId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('El paciente se elimina con 204 No Content', function () { pm.response.to.have.status(204); pm.expect(pm.response.text()).to.eql(''); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar paciente eliminado",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/pacientes/{{pacienteId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('El paciente eliminado responde 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar médico creado",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/medicos/{{medicoId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('El médico se elimina con 204 No Content', function () { pm.response.to.have.status(204); pm.expect(pm.response.text()).to.eql(''); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar médico eliminado",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/medicos/{{medicoId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('El médico eliminado responde 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
